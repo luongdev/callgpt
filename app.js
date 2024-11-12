@@ -11,18 +11,21 @@ const { TextToSpeechService } = require('./services/tts-service');
 const { recordingService } = require('./services/recording-service');
 
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
+const { createFsServer } = require('./services/freeswitch-service');
+
 
 const app = express();
 ExpressWs(app);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+
 
 app.post('/incoming', (req, res) => {
   try {
     const response = new VoiceResponse();
     const connect = response.connect();
     connect.stream({ url: `wss://${process.env.SERVER}/connection` });
-  
+
     res.type('text/xml');
     res.end(response.toString());
   } catch (err) {
@@ -41,40 +44,61 @@ app.ws('/connection', (ws) => {
     const streamService = new StreamService(ws);
     const transcriptionService = new TranscriptionService();
     const ttsService = new TextToSpeechService({});
-  
+
     let marks = [];
     let interactionCount = 0;
-  
+
     // Incoming from MediaStream
     ws.on('message', function message(data) {
-      const msg = JSON.parse(data);
-      if (msg.event === 'start') {
-        streamSid = msg.start.streamSid;
-        callSid = msg.start.callSid;
-        
+
+      if (typeof data === 'string') {
+        console.log('Freeswitch data', data);
+        streamSid = data;
+        callSid = data;
+
         streamService.setStreamSid(streamSid);
         gptService.setCallSid(callSid);
 
-        // Set RECORDING_ENABLED='true' in .env to record calls
-        recordingService(ttsService, callSid).then(() => {
-          console.log(`Twilio -> Starting Media Stream for ${streamSid}`.underline.red);
-          ttsService.generate({partialResponseIndex: null, partialResponse: 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?'}, 0);
-        });
-      } else if (msg.event === 'media') {
-        transcriptionService.send(msg.media.payload);
-      } else if (msg.event === 'mark') {
-        const label = msg.mark.name;
-        console.log(`Twilio -> Audio completed mark (${msg.sequenceNumber}): ${label}`.red);
-        marks = marks.filter(m => m !== msg.mark.name);
-      } else if (msg.event === 'stop') {
-        console.log(`Twilio -> Media stream ${streamSid} ended.`.underline.red);
+        // recordingService(ttsService, callSid).then(() => {
+        //   console.log(`Twilio -> Starting Media Stream for ${streamSid}`.underline.red);
+        //   ttsService.generate({partialResponseIndex: null, partialResponse: 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?'}, 0);
+        // });
+        return;
       }
+
+      if (typeof data === 'object') {
+        transcriptionService.send(data);
+      }
+
+
+      // const msg = JSON.parse(data);
+      // if (msg.event === 'start') {
+      //   streamSid = msg.start.streamSid;
+      //   callSid = msg.start.callSid;
+      //
+      //   streamService.setStreamSid(streamSid);
+      //   gptService.setCallSid(callSid);
+      //
+      //   // Set RECORDING_ENABLED='true' in .env to record calls
+      //   recordingService(ttsService, callSid).then(() => {
+      //     console.log(`Twilio -> Starting Media Stream for ${streamSid}`.underline.red);
+      //     ttsService.generate({partialResponseIndex: null, partialResponse: 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?'}, 0);
+      //   });
+      // } else if (msg.event === 'media') {
+      //   transcriptionService.send(msg.media.payload);
+      // } else if (msg.event === 'mark') {
+      //   const label = msg.mark.name;
+      //   console.log(`Twilio -> Audio completed mark (${msg.sequenceNumber}): ${label}`.red);
+      //   marks = marks.filter(m => m !== msg.mark.name);
+      // } else if (msg.event === 'stop') {
+      //   console.log(`Twilio -> Media stream ${streamSid} ended.`.underline.red);
+      // }
     });
-  
+
     transcriptionService.on('utterance', async (text) => {
       // This is a bit of a hack to filter out empty utterances
       if(marks.length > 0 && text?.length > 5) {
-        console.log('Twilio -> Interruption, Clearing stream'.red);
+        console.log('Twilio -> Interruption, Clearing stream'.red, text);
         ws.send(
           JSON.stringify({
             streamSid,
@@ -83,25 +107,24 @@ app.ws('/connection', (ws) => {
         );
       }
     });
-  
+
     transcriptionService.on('transcription', async (text) => {
       if (!text) { return; }
       console.log(`Interaction ${interactionCount} – STT -> GPT: ${text}`.yellow);
       gptService.completion(text, interactionCount);
       interactionCount += 1;
     });
-    
+
     gptService.on('gptreply', async (gptReply, icount) => {
       console.log(`Interaction ${icount}: GPT -> TTS: ${gptReply.partialResponse}`.green );
       ttsService.generate(gptReply, icount);
     });
-  
+
     ttsService.on('speech', (responseIndex, audio, label, icount) => {
       console.log(`Interaction ${icount}: TTS -> TWILIO: ${label}`.blue);
-  
       streamService.buffer(responseIndex, audio);
     });
-  
+
     streamService.on('audiosent', (markLabel) => {
       marks.push(markLabel);
     });
@@ -109,6 +132,8 @@ app.ws('/connection', (ws) => {
     console.log(err);
   }
 });
-
 app.listen(PORT);
+createFsServer().catch(console.error);
+
+
 console.log(`Server running on port ${PORT}`);

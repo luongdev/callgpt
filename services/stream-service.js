@@ -33,15 +33,19 @@ class StreamService extends EventEmitter {
   }
 
   sendAudio (audio) {
-    this.ws.send(
-      JSON.stringify({
-        streamSid: this.streamSid,
-        event: 'media',
-        media: {
-          payload: audio,
-        },
-      })
-    );
+
+    this.ws.send(audio);
+
+    // this.ws.send(
+    //   JSON.stringify({
+    //     streamSid: this.streamSid,
+    //     event: 'media',
+    //     media: {
+    //       payload: audio,
+    //     },
+    //   })
+    // );
+
     // When the media completes you will receive a `mark` message with the label
     const markLabel = uuid.v4();
     this.ws.send(

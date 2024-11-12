@@ -9,8 +9,8 @@ class TranscriptionService extends EventEmitter {
     super();
     const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
     this.dgConnection = deepgram.listen.live({
-      encoding: 'mulaw',
-      sample_rate: '8000',
+      encoding: 'linear16',
+      sample_rate: 8000,
       model: 'nova-2',
       punctuate: true,
       interim_results: true,

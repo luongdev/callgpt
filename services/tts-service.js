@@ -17,7 +17,7 @@ class TextToSpeechService extends EventEmitter {
 
     try {
       const response = await fetch(
-        `https://api.deepgram.com/v1/speak?model=${process.env.VOICE_MODEL}&encoding=mulaw&sample_rate=8000&container=none`,
+        `https://api.deepgram.com/v1/speak?model=${process.env.VOICE_MODEL}&encoding=linear16&sample_rate=8000&container=none`,
         {
           method: 'POST',
           headers: {
@@ -34,7 +34,7 @@ class TextToSpeechService extends EventEmitter {
         try {
           const blob = await response.blob();
           const audioArrayBuffer = await blob.arrayBuffer();
-          const base64String = Buffer.from(audioArrayBuffer).toString('base64');
+          const base64String = Buffer.from(audioArrayBuffer);//.toString('base64');
           this.emit('speech', partialResponseIndex, base64String, partialResponse, interactionCount);
         } catch (err) {
           console.log(err);
