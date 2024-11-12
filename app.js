@@ -8,9 +8,6 @@ const { GptService } = require('./services/gpt-service');
 const { StreamService } = require('./services/stream-service');
 const { TranscriptionService } = require('./services/transcription-service');
 const { TextToSpeechService } = require('./services/tts-service');
-const { recordingService } = require('./services/recording-service');
-
-const VoiceResponse = require('twilio').twiml.VoiceResponse;
 const { createFsServer } = require('./services/freeswitch-service');
 
 
@@ -18,20 +15,6 @@ const app = express();
 ExpressWs(app);
 
 const PORT = process.env.PORT || 3001;
-
-
-app.post('/incoming', (req, res) => {
-  try {
-    const response = new VoiceResponse();
-    const connect = response.connect();
-    connect.stream({ url: `wss://${process.env.SERVER}/connection` });
-
-    res.type('text/xml');
-    res.end(response.toString());
-  } catch (err) {
-    console.log(err);
-  }
-});
 
 app.ws('/connection', (ws) => {
   try {
