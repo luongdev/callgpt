@@ -8,13 +8,30 @@ const { GptService } = require('./services/gpt-service');
 const { StreamService } = require('./services/stream-service');
 const { TranscriptionService } = require('./services/transcription-service');
 const { TextToSpeechService } = require('./services/tts-service');
-const { createFsServer } = require('./services/freeswitch-service');
+const { createFsServer, hangup, transfer } = require('./services/freeswitch-service');
 
 
 const app = express();
+// app.use();
+
 ExpressWs(app);
 
 const PORT = process.env.PORT || 3001;
+
+app.delete('/:id/hangup', async (req, res) => {
+  const { id } = req.params || {};
+  const { cause } = req.query || {};
+
+  res.status((await hangup(id, cause)) ? 200 : 400).json();
+});
+
+app.put('/:id/transfer', async (req, res) => {
+
+  const { id } = req.params || {};
+  const { extension, context } = req.query || {};
+
+  res.status((await transfer(id, `${extension}@${context}`)) ? 200 : 400).json();
+});
 
 app.ws('/connection', (ws) => {
   try {
@@ -41,41 +58,12 @@ app.ws('/connection', (ws) => {
 
         streamService.setStreamSid(streamSid);
         gptService.setCallSid(callSid);
-
-        // recordingService(ttsService, callSid).then(() => {
-        //   console.log(`Twilio -> Starting Media Stream for ${streamSid}`.underline.red);
-        //   ttsService.generate({partialResponseIndex: null, partialResponse: 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?'}, 0);
-        // });
         return;
       }
 
       if (typeof data === 'object') {
         transcriptionService.send(data);
       }
-
-
-      // const msg = JSON.parse(data);
-      // if (msg.event === 'start') {
-      //   streamSid = msg.start.streamSid;
-      //   callSid = msg.start.callSid;
-      //
-      //   streamService.setStreamSid(streamSid);
-      //   gptService.setCallSid(callSid);
-      //
-      //   // Set RECORDING_ENABLED='true' in .env to record calls
-      //   recordingService(ttsService, callSid).then(() => {
-      //     console.log(`Twilio -> Starting Media Stream for ${streamSid}`.underline.red);
-      //     ttsService.generate({partialResponseIndex: null, partialResponse: 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?'}, 0);
-      //   });
-      // } else if (msg.event === 'media') {
-      //   transcriptionService.send(msg.media.payload);
-      // } else if (msg.event === 'mark') {
-      //   const label = msg.mark.name;
-      //   console.log(`Twilio -> Audio completed mark (${msg.sequenceNumber}): ${label}`.red);
-      //   marks = marks.filter(m => m !== msg.mark.name);
-      // } else if (msg.event === 'stop') {
-      //   console.log(`Twilio -> Media stream ${streamSid} ended.`.underline.red);
-      // }
     });
 
     transcriptionService.on('utterance', async (text) => {

@@ -9,6 +9,12 @@ const nilLogger = {
   debug: () => {},
 };
 
+const isOk = (res) => {
+  const rep = res?.body?.['Reply-Text'];
+
+  return rep && !rep.contains('-ERR');
+};
+
 const recorder = async (sk, uuid) => {
   const paths = await new Promise(async (resolve, reject) => {
     const delm = ';';
@@ -98,7 +104,34 @@ const createFsServer = async () => {
   return server;
 };
 
+const hangup = async (id, cause) => {
+  const socket = global?.['sockets']?.[id];
+  if (!socket) {
+    console.error('No call found with id: ', id);
+    return false;
+  }
+
+  return isOk(await socket.execute('hangup', cause ?? 'NORMAL_CLEARING'));
+};
+
+const transfer = async (id, extension) => {
+  const socket = global?.['sockets']?.[id];
+  if (!socket) {
+    console.error('No call found with id: ', id);
+    return false;
+  }
+
+  if (!extension) {
+    console.error('No extension provided');
+    return false;
+  }
+
+  return isOk(await socket.execute('bridge', '${sofia_contact(*/' + extension + ')}'));
+};
+
 
 module.exports = {
-  createFsServer
+  createFsServer,
+  hangup,
+  transfer,
 };

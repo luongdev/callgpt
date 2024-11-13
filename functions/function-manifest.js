@@ -119,6 +119,55 @@ const tools = [
       }
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'checkInventory',
+      say: 'Let me check our inventory right now.',
+      description: 'Check the inventory of airpods, airpods pro or airpods max.',
+      parameters: {
+        type: 'object',
+        properties: {
+          model: {
+            type: 'string',
+            'enum': ['airpods', 'airpods pro', 'airpods max'],
+            description: 'The model of airpods, either the airpods, airpods pro or airpods max',
+          },
+        },
+        required: ['model'],
+      },
+      returns: {
+        type: 'object',
+        properties: {
+          stock: {
+            type: 'integer',
+            description: 'An integer containing how many of the model are in currently in stock.'
+          }
+        }
+      }
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'hangupCall',
+      say: 'Thank for contact to my line, if you have any questions, please re-call me. Have a nice day, goodbye!',
+      description: 'Customer want to end the call.',
+      parameters: {
+        type: 'object',
+        properties: {
+          callSid: {
+            type: 'string',
+            description: 'The unique identifier for the active phone call.',
+          },
+        },
+        required: ['callSid'],
+      },
+      returns: {
+        type: 'boolean'
+      }
+    },
+  },
 ];
 
 module.exports = tools;
