@@ -65,7 +65,7 @@ const createFsServer = async () => {
     await socket.execute('answer', '');
     const sample = 8000;
     const aResult = await socket.api(
-      `uuid_audio_fork ${uuid} start ws://10.8.0.2:3001/connection mono ${sample} botbug ${uuid} true true ${sample}`
+      `uuid_audio_fork ${uuid} start ws://callgpt:3001/connection mono ${sample} botbug ${uuid} true true ${sample}`
     );
 
     console.log('aResult', aResult);

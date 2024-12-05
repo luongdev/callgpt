@@ -50,7 +50,6 @@ app.ws('/connection', (ws) => {
 
     // Incoming from MediaStream
     ws.on('message', function message(data) {
-
       if (typeof data === 'string') {
         console.log('Freeswitch data', data);
         streamSid = data;
@@ -62,6 +61,7 @@ app.ws('/connection', (ws) => {
       }
 
       if (typeof data === 'object') {
+        console.log('Nhan duoc message tu Freeswitch', data?.length);
         transcriptionService.send(data);
       }
     });
