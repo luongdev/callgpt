@@ -30,7 +30,7 @@ const app = express();
 
 ExpressWs(app);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 app.delete('/:id/hangup', async (req, res) => {
   const { id } = req.params || {};

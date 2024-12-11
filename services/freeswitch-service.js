@@ -28,7 +28,7 @@ const createFsServer = async () => {
     const sample = 8000;
     // const aResult =
     await socket.api(
-      `uuid_audio_fork ${uuid} start ws://69.69.69.2:3001/connection mono ${sample} botbug ${uuid} true true ${sample}`
+      `uuid_audio_fork ${uuid} start ws://127.0.0.1:3002/connection mono ${sample} botbug ${uuid} true true ${sample}`
     );
 
     // console.log('aResult', aResult);
@@ -40,8 +40,8 @@ const createFsServer = async () => {
   });
 
 
-  server.listen({ host: '0.0.0.0', port: 65022 })
-    .then(() => console.log('Listening on 65022'))
+  server.listen({ host: '0.0.0.0', port: 65023 })
+    .then(() => console.log('Listening on 65023'))
     .catch(console.error);
 
 
