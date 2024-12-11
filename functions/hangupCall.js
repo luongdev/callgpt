@@ -4,7 +4,7 @@ const { hangup } = require('../services/freeswitch-service');
 
 const hangupCall = async function (call) {
 
-  console.log('Transferring call', call.callSid);
+  console.log('hangupCall call', call.callSid);
 
   return `${await hangup(call.callSid)}`;
 };

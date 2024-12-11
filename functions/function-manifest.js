@@ -3,107 +3,16 @@ const tools = [
   {
     type: 'function',
     function: {
-      name: 'checkInventory',
-      say: 'Let me check our inventory right now.',
-      description: 'Check the inventory of airpods, airpods pro or airpods max.',
-      parameters: {
-        type: 'object',
-        properties: {
-          model: {
-            type: 'string',
-            'enum': ['airpods', 'airpods pro', 'airpods max'],
-            description: 'The model of airpods, either the airpods, airpods pro or airpods max',
-          },
-        },
-        required: ['model'],
-      },
-      returns: {
-        type: 'object',
-        properties: {
-          stock: {
-            type: 'integer',
-            description: 'An integer containing how many of the model are in currently in stock.'
-          }
-        }
-      }
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'checkPrice',
-      say: 'Let me check the price, one moment.',
-      description: 'Check the price of given model of airpods, airpods pro or airpods max.',
-      parameters: {
-        type: 'object',
-        properties: {
-          model: {
-            type: 'string',
-            'enum': ['airpods', 'airpods pro', 'airpods max'],
-            description: 'The model of airpods, either the airpods, airpods pro or airpods max',
-          },
-        },
-        required: ['model'],
-      },
-      returns: {
-        type: 'object',
-        properties: {
-          price: {
-            type: 'integer',
-            description: 'the price of the model'
-          }
-        }
-      }
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'placeOrder',
-      say: 'All right, I\'m just going to ring that up in our system.',
-      description: 'Places an order for a set of airpods.',
-      parameters: {
-        type: 'object',
-        properties: {
-          model: {
-            type: 'string',
-            'enum': ['airpods', 'airpods pro'],
-            description: 'The model of airpods, either the regular or pro',
-          },
-          quantity: {
-            type: 'integer',
-            description: 'The number of airpods they want to order',
-          },
-        },
-        required: ['type', 'quantity'],
-      },
-      returns: {
-        type: 'object',
-        properties: {
-          price: {
-            type: 'integer',
-            description: 'The total price of the order including tax'
-          },
-          orderNumber: {
-            type: 'integer',
-            description: 'The order number associated with the order.'
-          }
-        }
-      }
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'transferCall',
-      say: 'One moment while I transfer your call.',
-      description: 'Transfers the customer to a live agent in case they request help from a real person.',
+      name: 'getAgentName',
+      say: 'Hello, this is {{agentName}} calling you from Luuzio Finance Company. I understand that you have a financial contract with our company. Please confirm your name and IC number. \n To improve service quality, we will record this call',
+      sync: true,
+      description: 'Get agentName and set to conversation.',
       parameters: {
         type: 'object',
         properties: {
           callSid: {
             type: 'string',
-            description: 'The unique identifier for the active phone call.',
+            description: 'id of the call.',
           },
         },
         required: ['callSid'],
@@ -111,10 +20,10 @@ const tools = [
       returns: {
         type: 'object',
         properties: {
-          status: {
+          agentName: {
             type: 'string',
-            description: 'Whether or not the customer call was successfully transfered'
-          },
+            description: 'Name of agent.'
+          }
         }
       }
     },
@@ -122,50 +31,70 @@ const tools = [
   {
     type: 'function',
     function: {
-      name: 'checkInventory',
-      say: 'Let me check our inventory right now.',
-      description: 'Check the inventory of airpods, airpods pro or airpods max.',
+      name: 'setUserInfo',
+      sync: true,
+      say: 'Mr./Madam {{name}} with IC number {{icNum}} confirm that the information and documents provided and signed, including the employer\'s confirmation, are valid and true.' +
+          'Your financing amounting to {{amount}} has been approved and the financing cost to be borne by Mr./Mrs. is {{amountLia}} ' +
+          'Advance financing has been paid to you via the Al-Qardhul Hassan agreement amounting to {{advAmount}} and initial settlement to a third party of {{setAmount}} ' +
+          'Accordingly, the remaining financing that you will receive is {{amountReceived}} with monthly payments of {{monthlyPayments}} for a period of 10 years\n' +
+          '\n' +
+          'Do you agree?',
+      description: 'When the user provides information about the name, number of IC call the setUserInfo function, MUST collect both ["name" and "IC Number"] you can try to ask user maximum 3 times, if cannot found ["name" or "IC number"], call hangupCall function',
       parameters: {
         type: 'object',
         properties: {
-          model: {
+          name: {
             type: 'string',
-            'enum': ['airpods', 'airpods pro', 'airpods max'],
-            description: 'The model of airpods, either the airpods, airpods pro or airpods max',
+            description: 'detect and set the name of the user',
+          },
+          icNum: {
+            type: 'string',
+            description: 'detect and set the IC number of the user',
           },
         },
-        required: ['model'],
-      },
-      returns: {
+        required: ['name', 'icNum'],
+      }
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      sync: true,
+      name: 'userAgree',
+      say: 'Thank you Mr/Madam {{name}} for confirming. Have a nice day!',
+      description: 'Goodbye and call hangupCall function',
+      parameters: {
         type: 'object',
         properties: {
-          stock: {
-            type: 'integer',
-            description: 'An integer containing how many of the model are in currently in stock.'
+          name: {
+            type: 'string',
+            description: 'name of the user saved in the setUserInfo function',
+          },
+          agree: {
+            type: 'boolean',
+            description: 'The user agree or not',
           }
-        }
-      }
+        },
+        required: ['name'],
+      },
     },
   },
   {
     type: 'function',
     function: {
       name: 'hangupCall',
-      say: 'Thank for contact to my line, if you have any questions, please re-call me. Have a nice day, goodbye!',
-      description: 'Customer want to end the call.',
+      say: '',
+      description: 'Goodbye and call hangupCall function',
       parameters: {
         type: 'object',
         properties: {
           callSid: {
             type: 'string',
-            description: 'The unique identifier for the active phone call.',
-          },
+            description: 'The callSid of the call',
+          }
         },
-        required: ['callSid'],
+        required: ['name'],
       },
-      returns: {
-        type: 'boolean'
-      }
     },
   },
 ];

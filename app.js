@@ -11,6 +11,20 @@ const { TextToSpeechService } = require('./services/tts-service');
 const { createFsServer, hangup, transfer } = require('./services/freeswitch-service');
 
 
+function replaceTemplate(text = '', args  = '{}') {
+  try {
+    const obj = JSON.parse(args);
+    return text.replace(/{{(.*?)}}/g, (match, key) => {
+      if (obj[key]) {
+        return obj[key];
+      }
+      return match;
+    });
+  } catch (e) {
+    return text;
+  }
+}
+
 const app = express();
 // app.use();
 
@@ -43,7 +57,7 @@ app.ws('/connection', (ws) => {
     const gptService = new GptService();
     const streamService = new StreamService(ws);
     const transcriptionService = new TranscriptionService();
-    const ttsService = new TextToSpeechService({});
+    const ttsService = new TextToSpeechService();
 
     let marks = [];
     let interactionCount = 0;
@@ -56,12 +70,11 @@ app.ws('/connection', (ws) => {
         callSid = data;
 
         streamService.setStreamSid(streamSid);
-        gptService.setCallSid(callSid);
+        gptService.setCallSid(callSid).completion('', 1, 'user', 'user');
         return;
       }
 
       if (typeof data === 'object') {
-        console.log('Nhan duoc message tu Freeswitch', data?.length);
         transcriptionService.send(data);
       }
     });
@@ -87,6 +100,8 @@ app.ws('/connection', (ws) => {
     });
 
     gptService.on('gptreply', async (gptReply, icount) => {
+      gptReply.partialResponse = replaceTemplate(gptReply.partialResponse, gptReply.args);
+
       console.log(`Interaction ${icount}: GPT -> TTS: ${gptReply.partialResponse}`.green );
       ttsService.generate(gptReply, icount);
     });

@@ -12,23 +12,29 @@ tools.forEach((tool) => {
 });
 
 class GptService extends EventEmitter {
-  constructor() {
+  constructor(apiKey) {
     super();
-    this.openai = new OpenAI();
+
+    this.openai = new OpenAI({ apiKey });
     this.userContext = [
-      { 'role': 'system', 'content': 'You are an outbound sales representative selling Apple Airpods. You have a youthful and cheery personality. Keep your responses as brief as possible but make every attempt to keep the caller on the phone without being rude. Don\'t ask more than 1 question at a time. Don\'t make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous. Speak out all prices to include the currency. Please help them decide between the airpods, airpods pro and airpods max by asking questions like \'Do you prefer headphones that go in your ear or over the ear?\'. If they are trying to choose between the airpods and airpods pro try asking them if they need noise canceling. Once you know which model they would like ask them how many they would like to purchase and try to get them to place an order. You must add a \'•\' symbol every 5 to 10 words at natural pauses where your response can be split for text to speech.' },
-      { 'role': 'assistant', 'content': 'Hello! I understand you\'re looking for a pair of AirPods, is that correct?' },
+      {
+        'role': 'system',
+        'content': 'You are a customer service representative, you will make calls to customers to inquire and collect information about their financial assistance.'
+      },
     ];
     this.partialResponseIndex = 0;
   }
 
   // Add the callSid to the chat context in case
   // ChatGPT decides to transfer the call.
-  setCallSid (callSid) {
-    this.userContext.push({ 'role': 'system', 'content': `callSid: ${callSid}` });
+  setCallSid(callSid) {
+    this.userContext.push({'role': 'system', 'content': `callSid: ${callSid}`});
+    this.userContext.push({'role': 'system', 'content': 'call getAgentName function and save agentName'});
+
+    return this;
   }
 
-  validateFunctionArgs (args) {
+  validateFunctionArgs(args) {
     try {
       return JSON.parse(args);
     } catch (error) {
@@ -42,9 +48,9 @@ class GptService extends EventEmitter {
 
   updateUserContext(name, role, text) {
     if (name !== 'user') {
-      this.userContext.push({ 'role': role, 'name': name, 'content': text });
+      this.userContext.push({'role': role, 'name': name, 'content': text});
     } else {
-      this.userContext.push({ 'role': role, 'content': text });
+      this.userContext.push({'role': role, 'content': text});
     }
   }
 
@@ -67,11 +73,11 @@ class GptService extends EventEmitter {
 
     function collectToolInformation(deltas) {
       let name = deltas.tool_calls[0]?.function?.name || '';
-      if (name != '') {
+      if (name?.length) {
         functionName = name;
       }
       let args = deltas.tool_calls[0]?.function?.arguments || '';
-      if (args != '') {
+      if (args?.length) {
         // args are streamed as JSON string so we need to concatenate all chunks
         functionArgs += args;
       }
@@ -94,24 +100,36 @@ class GptService extends EventEmitter {
 
         const functionToCall = availableFunctions[functionName];
         const validatedArgs = this.validateFunctionArgs(functionArgs);
-        
+
         // Say a pre-configured message from the function manifest
         // before running the function.
         const toolData = tools.find(tool => tool.function.name === functionName);
-        const say = toolData.function.say;
+        const say = toolData.function.say ?? '';
+        let functionResponse = null;
+        if (toolData.function.sync) {
+          functionResponse = await functionToCall(validatedArgs);
 
-        this.emit('gptreply', {
-          partialResponseIndex: null,
-          partialResponse: say
-        }, interactionCount);
+          this.emit('gptreply', {
+            partialResponseIndex: null,
+            partialResponse: say,
+            args: functionResponse,
+          }, interactionCount);
 
-        let functionResponse = await functionToCall(validatedArgs);
+        } else {
+          this.emit('gptreply', {
+            partialResponseIndex: null,
+            partialResponse: say,
+          }, interactionCount);
+
+          functionResponse = await functionToCall(validatedArgs);
+          await this.completion(functionResponse, interactionCount, 'function', functionName);
+        }
+
 
         // Step 4: send the info on the function call and function response to GPT
         this.updateUserContext(functionName, 'function', functionResponse);
-        
+
         // call the completion function again but pass in the function response to have OpenAI generate a new assistant response
-        await this.completion(functionResponse, interactionCount, 'function', functionName);
       } else {
         // We use completeResponse for userContext
         completeResponse += content;
@@ -119,7 +137,7 @@ class GptService extends EventEmitter {
         partialResponse += content;
         // Emit last partial response and add complete response to userContext
         if (content.trim().slice(-1) === '•' || finishReason === 'stop') {
-          const gptReply = { 
+          const gptReply = {
             partialResponseIndex: this.partialResponseIndex,
             partialResponse
           };
@@ -135,4 +153,4 @@ class GptService extends EventEmitter {
   }
 }
 
-module.exports = { GptService };
+module.exports = {GptService};
